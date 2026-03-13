@@ -1,0 +1,29 @@
+{
+  "name": "huly-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Huly project management — manage issues, track time, update statuses, and more",
+  "main": "src/server.ts",
+  "scripts": {
+    "start": "tsx src/server.ts"
+  },
+  "keywords": ["mcp", "huly", "project-management", "tracker", "claude"],
+  "author": "Yaroslav Zaruchevsky",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YarikYar/huly-mcp"
+  },
+  "dependencies": {
+    "@hcengineering/activity": "^0.7.0",
+    "@hcengineering/api-client": "^0.7.19",
+    "@hcengineering/chunter": "^0.7.0",
+    "@hcengineering/contact": "^0.7.0",
+    "@hcengineering/core": "^0.7.26",
+    "@hcengineering/task": "^0.7.0",
+    "@hcengineering/tracker": "^0.7.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "dotenv": "^17.3.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

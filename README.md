@@ -15,6 +15,8 @@ MCP server for [Huly](https://huly.io) project management platform. Lets AI assi
 | `add_comment` | Add a comment to an issue |
 | `list_statuses` | List available issue statuses for a project |
 | `list_members` | List workspace members |
+| `time_report` | Get time report for a member for a date or date range |
+| `set_custom_field` | Set a custom field value on an issue (requires config) |
 
 ## Setup
 
@@ -98,6 +100,77 @@ Add to `claude_desktop_config.json`:
 }
 ```
 
+## Custom fields
+
+Huly stores custom fields as mixins with auto-generated IDs. To use `set_custom_field`, you need to find the field ID and map it to a friendly name.
+
+### Finding custom field IDs
+
+Create a temporary script `dump-fields.ts`:
+
+```typescript
+import dotenv from 'dotenv'
+import path from 'path'
+dotenv.config({ path: path.resolve(__dirname, '.env') })
+
+import { ConnectOptions, NodeWebSocketFactory, connect } from '@hcengineering/api-client'
+import tracker from '@hcengineering/tracker'
+
+async function main() {
+  const client = await connect(process.env.HULY_URL ?? 'https://huly.app', {
+    email: process.env.HULY_EMAIL!,
+    password: process.env.HULY_PASSWORD!,
+    workspace: process.env.HULY_WORKSPACE!,
+    socketFactory: NodeWebSocketFactory,
+    connectionTimeout: 30000
+  })
+
+  try {
+    // Pick any issue that has your custom fields filled in
+    const issue = await client.findOne(tracker.class.Issue, { identifier: 'DEV-1' })
+    if (!issue) throw new Error('Issue not found')
+
+    const mixinData = (issue as any)['tracker:mixin:IssueTypeData']
+    if (mixinData) {
+      console.log('Custom fields on this issue:')
+      for (const [key, value] of Object.entries(mixinData)) {
+        console.log(`  ${key} = "${value}"`)
+      }
+    } else {
+      console.log('No custom fields found on this issue')
+    }
+  } finally {
+    await client.close()
+  }
+}
+
+main().catch(console.error)
+```
+
+Run it:
+
+```bash
+npx tsx dump-fields.ts
+```
+
+Output example:
+
+```
+Custom fields on this issue:
+  custom696fc1e93e1982f72ab4b92f = "main"
+```
+
+### Configuring custom fields
+
+Add the mapping to your env (in `.env` or `.mcp.json`):
+
+```env
+# Format: friendlyName=hulyFieldId,anotherName=anotherId
+HULY_CUSTOM_FIELDS=gitlabBranch=custom696fc1e93e1982f72ab4b92f
+```
+
+The `set_custom_field` tool will only appear if `HULY_CUSTOM_FIELDS` is configured. Custom field values also appear in `get_issue` output automatically.
+
 ## Usage examples
 
 Once connected, you can ask your AI assistant things like:
@@ -108,10 +181,8 @@ Once connected, you can ask your AI assistant things like:
 - "Log 2 hours on DEV-599"
 - "Assign DEV-597 to Arsenii"
 - "Add a comment to DEV-592: Started working on the bonus system"
-
-## How it works
-
-The server connects to Huly via their official `@hcengineering/api-client` WebSocket API. Connection is established lazily on first tool call and automatically reconnects if dropped.
+- "Set gitlabBranch on DEV-592 to @user/feat/my-feature"
+- "Show my time report for yesterday"
 
 ## Priority values
 

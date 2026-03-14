@@ -288,6 +288,51 @@ server.tool('add_time', 'Log time spent on an issue', {
   })
 })
 
+// --- delete_time ---
+server.tool('delete_time', 'Delete time entries for a specific issue and date', {
+  identifier: z.string().describe('Issue identifier (e.g. DEV-123)'),
+  date: z.string().describe('Date to delete entries for (YYYY-MM-DD)'),
+  employee: z.string().optional().describe('Employee ID (defaults to issue assignee)')
+}, async ({ identifier, date, employee }) => {
+  return withRetry(async (c) => {
+    const issue = await c.findOne(tracker.class.Issue, { identifier })
+
+    if (!issue) {
+      return { content: [{ type: 'text', text: `Issue ${identifier} not found` }] }
+    }
+
+    const employeeId = employee ?? (issue as any).assignee ?? null
+    const dayStart = new Date(date).getTime()
+    const dayEnd = dayStart + 86400000
+
+    const reports = await c.findAll(tracker.class.TimeSpendReport, {
+      attachedTo: issue._id,
+      employee: employeeId
+    } as any)
+
+    const toDelete = reports.filter((r: any) => r.date >= dayStart && r.date < dayEnd)
+
+    if (toDelete.length === 0) {
+      return { content: [{ type: 'text', text: `No time entries found on ${identifier} for ${date}` }] }
+    }
+
+    let totalDeleted = 0
+    for (const r of toDelete) {
+      await c.removeCollection(
+        r._class,
+        (r as any).space,
+        r._id,
+        r.attachedTo,
+        (r as any).attachedToClass,
+        (r as any).collection
+      )
+      totalDeleted += (r as any).value
+    }
+
+    return { content: [{ type: 'text', text: `Deleted ${toDelete.length} entries (${totalDeleted}h) from ${identifier} for ${date}` }] }
+  })
+})
+
 // --- add_comment ---
 server.tool('add_comment', 'Add a comment to an issue', {
   identifier: z.string().describe('Issue identifier (e.g. DEV-123)'),

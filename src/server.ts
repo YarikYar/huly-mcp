@@ -14,6 +14,16 @@ import { z } from 'zod'
 
 let client: PlatformClient | null = null
 
+// Prevent unhandled errors from crashing the process
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception (suppressed):', err.message)
+  client = null
+})
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection (suppressed):', (err as Error)?.message ?? err)
+  client = null
+})
+
 async function freshClient(): Promise<PlatformClient> {
   if (client !== null) {
     try { await client.close() } catch {}
